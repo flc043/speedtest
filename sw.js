@@ -1,26 +1,14 @@
-const CACHE_NAME = 'speedtest-v2';
-const ASSETS = [
-  './',
-  './index.html',
-  './192.png',
-  './512.png',
-  './manifest.json'
-];
+const CACHE_NAME = 'speedtest-cache-v1';
+const urlsToCache = ['./index.html', './manifest.json', './192.png', './512.png'];
 
-// 安裝時快取資源
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache))
   );
 });
 
-// 攔截請求，確保離線可用
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    caches.match(event.request).then((response) => response || fetch(event.request))
   );
 });
