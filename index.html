@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeedTest Pro - 真實網路測速</title>
+
+    <!-- PWA 相關設定 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d131f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<script>
+    // 註冊 Service Worker
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js');
+        });
+    }
+</script>
+
+    <style>
+        :root {
+            --bg-color: #0d131f;
+            --card-bg: #1e2532;
+            --primary-cyan: #3abff8;
+            --text-main: #ffffff;
+            --text-muted: #8b949e;
+            --accent-green: #34d399;
+            --accent-pink: #f472b6;
+            --accent-orange: #fb923c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Header */
+        .header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .title h1 { font-size: 24px; font-weight: 600; }
+        .title p { color: var(--accent-green); font-size: 14px; margin-top: 4px; }
+        .header-icons { display: flex; gap: 12px; }
+        .icon-btn { width: 36px; height: 36px; border-radius: 50%; background-color: var(--card-bg); display: flex; justify-content: center; align-items: center; color: var(--text-muted); font-weight: bold; }
+        .icon-btn.secure { color: var(--accent-green); }
+
+        /* Top Stats */
+        .top-stats { display: flex; gap: 16px; }
+        .stat-card { flex: 1; background-color: var(--card-bg); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; border: 1px solid rgba(255,255,255,0.05); }
+        .stat-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 14px; }
+        .ping-icon { background-color: rgba(244, 114, 182, 0.1); color: var(--accent-pink); }
+        .jitter-icon { background-color: rgba(251, 146, 60, 0.1); color: var(--accent-orange); }
+        .stat-info h3 { font-size: 12px; color: var(--text-muted); font-weight: normal; }
+        .stat-info p { font-size: 16px; font-weight: bold; margin-top: 2px; }
+
+        /* Gauge */
+        .gauge-container { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 250px; background: radial-gradient(circle, rgba(58,191,248,0.1) 0%, transparent 60%); }
+        .svg-gauge { position: absolute; width: 250px; height: 250px; transform: rotate(135deg); }
+        .gauge-bg { fill: none; stroke: var(--card-bg); stroke-width: 12; }
+        .gauge-progress { fill: none; stroke: var(--primary-cyan); stroke-width: 12; stroke-dasharray: 565; stroke-dashoffset: 565; stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
+        .gauge-content { text-align: center; z-index: 10; margin-top: 20px; }
+        .gauge-value { font-size: 64px; font-weight: bold; line-height: 1; }
+        .gauge-unit { color: var(--text-muted); font-size: 16px; margin-top: 4px; }
+        .gauge-label { color: var(--primary-cyan); font-size: 14px; font-weight: bold; margin-top: 12px; letter-spacing: 1px; }
+
+        /* Bottom Stats */
+        .bottom-stats { display: flex; gap: 16px; }
+        .main-stat-card { flex: 1; background-color: var(--card-bg); border-radius: 16px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .main-stat-icon { font-size: 24px; margin-bottom: 8px; }
+        .dl-icon { color: var(--primary-cyan); }
+        .ul-icon { color: var(--accent-green); }
+        .main-stat-card h3 { font-size: 12px; color: var(--text-muted); font-weight: normal; margin-bottom: 8px; }
+        .main-stat-card p { font-size: 24px; font-weight: bold; }
+        .main-stat-card span { font-size: 12px; color: var(--text-muted); }
+
+        /* Button */
+        .start-btn { background-color: var(--primary-cyan); color: #000; border: none; border-radius: 12px; padding: 18px; font-size: 16px; font-weight: bold; display: flex; justify-content: center; align-items: center; gap: 8px; cursor: pointer; transition: opacity 0.2s; }
+        .start-btn:active { opacity: 0.8; }
+        .start-btn:disabled { background-color: #555; cursor: not-allowed; color: #aaa; }
+    </style>
+
+
+</head>
+<body>
+
+<div class="app-container">
+    <header class="header">
+        <div class="title">
+            <h1>SpeedTest Pro</h1>
+            <p>Cloudflare 真實節點測速</p>
+        </div>
+        <div class="header-icons">
+            <div class="icon-btn">i</div>
+            <div class="icon-btn secure">🛡</div>
+        </div>
+    </header>
+
+    <div class="top-stats">
+        <div class="stat-card">
+            <div class="stat-icon ping-icon">⏱</div>
+            <div class="stat-info">
+                <h3>延遲 (Ping)</h3>
+                <p id="pingVal">0 ms</p>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon jitter-icon">▤</div>
+            <div class="stat-info">
+                <h3>抖動 (Jitter)</h3>
+                <p id="jitterVal">0 ms</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="gauge-container">
+        <svg class="svg-gauge" viewBox="0 0 200 200">
+            <circle class="gauge-bg" cx="100" cy="100" r="90" stroke-dasharray="424 565" stroke-dashoffset="0"></circle>
+            <circle class="gauge-progress" id="gaugeProgress" cx="100" cy="100" r="90"></circle>
+        </svg>
+        <div class="gauge-content">
+            <div class="gauge-value" id="mainValue">0.0</div>
+            <div class="gauge-unit">Mbps</div>
+            <div class="gauge-label" id="mainLabel">等待測試</div>
+        </div>
+    </div>
+
+    <div class="bottom-stats">
+        <div class="main-stat-card">
+            <div class="main-stat-icon dl-icon">⬇</div>
+            <h3>下載 (DOWNLOAD)</h3>
+            <p id="dlVal">0.0</p>
+            <span>Mbps</span>
+        </div>
+        <div class="main-stat-card">
+            <div class="main-stat-icon ul-icon">⬆</div>
+            <h3>上傳 (UPLOAD)</h3>
+            <p id="ulVal">0.0</p>
+            <span>Mbps</span>
+        </div>
+    </div>
+
+    <button class="start-btn" id="startBtn">▶ 開始測試</button>
+</div>
+
+<script>
+    const UI = {
+        btn: document.getElementById('startBtn'),
+        mainVal: document.getElementById('mainValue'),
+        mainLabel: document.getElementById('mainLabel'),
+        dlVal: document.getElementById('dlVal'),
+        ulVal: document.getElementById('ulVal'),
+        pingVal: document.getElementById('pingVal'),
+        jitterVal: document.getElementById('jitterVal'),
+        gauge: document.getElementById('gaugeProgress')
+    };
+
+    const MAX_DASH = 565;
+    const ARC_LENGTH = 424;
+
+    function updateGauge(mbps, maxMbps = 500) {
+        let percent = (mbps / maxMbps) * 100;
+        if(percent > 100) percent = 100;
+        const offset = MAX_DASH - (percent / 100) * ARC_LENGTH;
+        UI.gauge.style.strokeDashoffset = offset;
+    }
+
+    function setGaugeColor(color) {
+        UI.gauge.style.stroke = color;
+        UI.mainLabel.style.color = color;
+    }
+
+    // 1. 測量 Ping 與 Jitter
+    async function testPing() {
+        UI.mainLabel.innerText = '測量延遲...';
+        setGaugeColor('var(--accent-pink)');
+        let pings = [];
+        // 請求 10 次極小的檔案來算平均延遲
+        for (let i = 0; i < 10; i++) {
+            let start = performance.now();
+            try {
+                await fetch(`https://speed.cloudflare.com/__down?bytes=0&cache=${Math.random()}`);
+                pings.push(performance.now() - start);
+            } catch (e) { console.error("Ping error"); }
+        }
+
+        if (pings.length === 0) return;
+
+        let avgPing = pings.reduce((a, b) => a + b) / pings.length;
+        UI.pingVal.innerText = `${Math.round(avgPing)} ms`;
+
+        let jitterSum = 0;
+        for (let i = 1; i < pings.length; i++) {
+            jitterSum += Math.abs(pings[i] - pings[i - 1]);
+        }
+        let jitter = jitterSum / (pings.length - 1 || 1);
+        UI.jitterVal.innerText = `${Math.round(jitter)} ms`;
+    }
+
+    // 2. 真實下載測試 (25MB)
+    async function testDownload() {
+        UI.mainLabel.innerText = '下載測試中...';
+        setGaugeColor('var(--primary-cyan)');
+        
+        const testBytes = 25 * 1024 * 1024; // 25MB
+        const url = `https://speed.cloudflare.com/__down?bytes=${testBytes}&cache=${Math.random()}`;
+        
+        let start = performance.now();
+        let response = await fetch(url);
+        let reader = response.body.getReader();
+        let loaded = 0;
+        let finalMbps = 0;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            loaded += value.length;
+            let duration = (performance.now() - start) / 1000;
+            // 避免除以 0 或過小時間導致的數值暴衝
+            if (duration > 0.1) {
+                let mbps = (loaded * 8 / 1000000) / duration;
+                finalMbps = mbps;
+                let displayVal = mbps.toFixed(1);
+                UI.mainVal.innerText = displayVal;
+                UI.dlVal.innerText = displayVal;
+                updateGauge(mbps, 300); // 假設儀表板上限 300Mbps
+            }
+        }
+        return finalMbps;
+    }
+
+    // 3. 真實上傳測試 (10MB)
+    function testUpload() {
+        return new Promise((resolve) => {
+            UI.mainLabel.innerText = '上傳測試中...';
+            setGaugeColor('var(--accent-green)');
+            
+            const testBytes = 10 * 1024 * 1024; // 產生 10MB 的假資料
+            const data = new Uint8Array(testBytes);
+            
+            let xhr = new XMLHttpRequest();
+            let start = performance.now();
+            let finalMbps = 0;
+
+            xhr.upload.onprogress = (event) => {
+                if (event.lengthComputable) {
+                    let duration = (performance.now() - start) / 1000;
+                    if (duration > 0.1) {
+                        let mbps = (event.loaded * 8 / 1000000) / duration;
+                        finalMbps = mbps;
+                        let displayVal = mbps.toFixed(1);
+                        UI.mainVal.innerText = displayVal;
+                        UI.ulVal.innerText = displayVal;
+                        updateGauge(mbps, 100); // 假設上傳儀表板上限 100Mbps
+                    }
+                }
+            };
+
+            xhr.onload = () => resolve(finalMbps);
+            xhr.onerror = () => resolve(0);
+            
+            // Cloudflare 提供的公開上傳接收端點
+            xhr.open('POST', `https://speed.cloudflare.com/__up?cache=${Math.random()}`);
+            xhr.send(data);
+        });
+    }
+
+    // 執行完整流程
+    async function runRealSpeedTest() {
+        UI.btn.disabled = true;
+        UI.btn.innerText = '測試進行中...';
+        
+        // 重置 UI
+        UI.pingVal.innerText = '0 ms';
+        UI.jitterVal.innerText = '0 ms';
+        UI.dlVal.innerText = '0.0';
+        UI.ulVal.innerText = '0.0';
+        UI.mainVal.innerText = '0.0';
+        updateGauge(0);
+
+        try {
+            await testPing();
+            await new Promise(r => setTimeout(r, 500)); // 稍微停頓
+            
+            await testDownload();
+            await new Promise(r => setTimeout(r, 500));
+            
+            await testUpload();
+            
+            UI.mainLabel.innerText = '測試完成';
+            setGaugeColor('var(--text-main)');
+            updateGauge(0);
+        } catch (err) {
+            console.error("測試發生錯誤", err);
+            UI.mainLabel.innerText = '網路異常';
+            setGaugeColor('red');
+        }
+
+        UI.btn.disabled = false;
+        UI.btn.innerText = '▶ 重新測試';
+    }
+
+    UI.btn.addEventListener('click', runRealSpeedTest);
+</script>
+
+</body>
+</html>
