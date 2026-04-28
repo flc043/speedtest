@@ -1,4 +1,4 @@
-const CACHE_NAME = 'speedtest-v127'; // 更新至 v127
+const CACHE_NAME = 'speedtest-v128'; // 更新版本號
 
 const ASSETS = [
   './',
@@ -26,7 +26,7 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-    // 【資安防護】絕對不要攔截測速流量，否則會造成卡頓
+    // 再次確認：絕對不要干擾測速端點
     if (e.request.url.includes('cloudflare.com')) return; 
     
     e.respondWith(
