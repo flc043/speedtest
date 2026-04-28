@@ -11,18 +11,20 @@ self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
 });
 
-self.addEventListener('fetch', (e) => {
-  // 關鍵修正：如果是測速請求 (Cloudflare)，直接走網路，不要攔截
-  if (e.request.url.includes('cloudflare.com')) {
-    return; 
-  }
+self.addEventListener('fetch', (event) => {
+    const url = event.request.url;
 
-  // 關鍵修正：如果是 POST 請求（上傳測試用），直接走網路
-  if (e.request.method === 'POST') {
-    return;
-  }
+    // 只要網址包含 cloudflare，完全不處理，直接交給瀏覽器原生網路
+    if (url.includes('cloudflare.com')) {
+        return;
+    }
 
-  e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request))
-  );
+    // 只快取 GET 請求
+    if (event.request.method !== 'GET') return;
+
+    event.respondWith(
+        caches.match(event.request).then((response) => {
+            return response || fetch(event.request);
+        })
+    );
 });
