@@ -117,7 +117,7 @@
     <button class="start-btn" id="startBtn">開始測試</button>
 
     <footer class="footer">
-        <div class="version-text">版本資訊 v1.2.9 (PWA)</div>
+        <div class="version-text">版本資訊 v1.3.0 (PWA)</div>
         <div class="security-info">無追蹤程式碼 • 隱私防護模式 • 官方節點</div>
     </footer>
 </div>
@@ -196,59 +196,50 @@
 const delay = ms => new Promise(res => setTimeout(res, ms));
 
 async function testUpload() {
-    setUIState('準備上傳測試...', 'var(--accent-green)');
-    await delay(1000); 
-    
     setUIState('上傳測試中...', 'var(--accent-green)');
     
-    return new Promise((resolve) => {
-        const testBytes = 2 * 1024 * 1024; // 2MB
-        const data = new Uint8Array(testBytes);
-        
-        // 修正：分段產生隨機數據，避開瀏覽器 64KB 的限制
-        const chunkSize = 65536;
-        for (let i = 0; i < testBytes; i += chunkSize) {
-            const currentChunkSize = Math.min(chunkSize, testBytes - i);
-            // 這裡我們只抓取當前段落的 view
-            window.crypto.getRandomValues(data.subarray(i, i + currentChunkSize));
-        }
-        
-        const blob = new Blob([data], { type: 'text/plain' });
-        const xhr = new XMLHttpRequest();
-        const start = performance.now();
-        let lastUpdate = start;
+    const totalSize = 4 * 1024 * 1024; // 總量 4MB
+    const chunkSize = 512 * 1024;     // 每段 512KB (共 8 段)
+    const numChunks = totalSize / chunkSize;
+    
+    // 產生隨機數據（安全分段產生）
+    const chunkData = new Uint8Array(chunkSize);
+    window.crypto.getRandomValues(chunkData);
 
-        xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable && event.loaded > 0) {
-                const now = performance.now();
-                if (now - lastUpdate > 100) {
-                    const duration = (now - start) / 1000;
-                    const mbps = (event.loaded * 8 / 1000000) / duration;
-                    UI.mainVal.innerText = mbps.toFixed(1);
-                    UI.ulVal.innerText = mbps.toFixed(1);
-                    updateGauge(mbps, 60);
-                    lastUpdate = now;
-                }
+    let uploadedBytes = 0;
+    const start = performance.now();
+
+    try {
+        for (let i = 0; i < numChunks; i++) {
+            // 使用 fetch + no-cors：這是唯一能完全避開預檢請求的方法
+            await fetch('https://speed.cloudflare.com/__up', {
+                method: 'POST',
+                body: chunkData,
+                mode: 'no-cors', // 強制不檢查 CORS
+                cache: 'no-store'
+            });
+
+            uploadedBytes += chunkSize;
+            
+            // 每傳完一段就計算一次即時速度，讓儀表板指針跳動
+            const now = performance.now();
+            const duration = (now - start) / 1000;
+            if (duration > 0) {
+                const mbps = (uploadedBytes * 8 / 1000000) / duration;
+                UI.mainVal.innerText = mbps.toFixed(1);
+                UI.ulVal.innerText = mbps.toFixed(1);
+                updateGauge(mbps, 60);
             }
-        };
+        }
 
-        xhr.onload = () => {
-            const finalDuration = (performance.now() - start) / 1000;
-            const finalMbps = (testBytes * 8 / 1000000) / finalDuration;
-            UI.mainVal.innerText = finalMbps.toFixed(1);
-            UI.ulVal.innerText = finalMbps.toFixed(1);
-            resolve(finalMbps);
-        };
+        const finalDuration = (performance.now() - start) / 1000;
+        return (uploadedBytes * 8 / 1000000) / finalDuration;
 
-        xhr.onerror = () => {
-            UI.ulVal.innerText = '連線失敗';
-            resolve(0);
-        };
-
-        xhr.timeout = 20000; 
-        xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Date.now()}`);
-        xhr.send(blob);
-    });
+    } catch (e) {
+        console.error("上傳失敗:", e);
+        UI.ulVal.innerText = '量測失敗';
+        return 0;
+    }
 }
 
 // 修改按鈕點擊後的執行流程
