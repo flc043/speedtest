@@ -164,35 +164,40 @@
         } catch (e) { console.error(e); }
     }
 
-    function testUpload() {
-        return new Promise((resolve) => {
-            UI.mainLabel.innerText = '上傳測試中...';
-            setGaugeColor('var(--accent-green)');
-            const testBytes = 2 * 1024 * 1024;
-            const data = new Uint8Array(testBytes);
-            for (let i = 0; i < data.length; i++) data[i] = Math.random() * 255;
-            const blob = new Blob([data], { type: 'text/plain' });
-            
-            let xhr = new XMLHttpRequest();
-            let start = performance.now();
-            let finalMbps = 0;
+    async function testUpload() {
+    UI.mainLabel.innerText = '上傳測試中...';
+    setGaugeColor('var(--accent-green)');
+    
+    // 產生 4MB 的隨機數據
+    const size = 4 * 1024 * 1024; 
+    const data = new Uint8Array(size);
+    for (let i = 0; i < size; i++) data[i] = Math.floor(Math.random() * 256);
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable && event.loaded > 0) {
-                    let duration = (performance.now() - start) / 1000;
-                    let mbps = (event.loaded * 8 / 1000000) / duration;
-                    finalMbps = mbps;
-                    UI.mainVal.innerText = mbps.toFixed(1);
-                    UI.ulVal.innerText = mbps.toFixed(1);
-                    updateGauge(mbps, 60);
-                }
-            };
-            xhr.onload = () => resolve(finalMbps);
-            xhr.onerror = () => { UI.ulVal.innerText = 'CORS Error'; resolve(0); };
-            xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Math.random()}`);
-            xhr.send(blob);
+    const start = performance.now();
+    
+    try {
+        // 使用 fetch 的 no-cors 模式，這會強制跳過預檢請求，直接繞過 CORS 限制
+        await fetch('https://speed.cloudflare.com/__up', {
+            method: 'POST',
+            body: data,
+            mode: 'no-cors', // 關鍵：不檢查 CORS，直接發送
+            cache: 'no-store'
         });
+
+        // 計算時間差
+        const duration = (performance.now() - start) / 1000;
+        const mbps = (size * 8 / 1000000) / duration;
+        
+        UI.mainVal.innerText = mbps.toFixed(1);
+        UI.ulVal.innerText = mbps.toFixed(1);
+        updateGauge(mbps, 60);
+        return mbps;
+    } catch (e) {
+        console.error("Upload error:", e);
+        UI.ulVal.innerText = 'Error';
+        return 0;
     }
+}
 
     async function runRealSpeedTest() {
         UI.btn.disabled = true;
