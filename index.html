@@ -117,7 +117,7 @@
     <button class="start-btn" id="startBtn">開始測試</button>
 
     <footer class="footer">
-        <div class="version-text">版本資訊 v1.2.7 (PWA)</div>
+        <div class="version-text">版本資訊 v1.2.8 (PWA)</div>
         <div class="security-info">無追蹤程式碼 • 隱私防護模式 • 官方節點</div>
     </footer>
 </div>
@@ -192,51 +192,95 @@
     }
 
     // 3. 上傳測試
-    async function testUpload() {
+    // 新增一個延遲函數
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function testUpload() {
+    setUIState('準備上傳測試...', 'var(--accent-green)');
+    await delay(1500); // 關鍵：給網路 1.5 秒冷卻時間，防止連線塞車
+    
     setUIState('上傳測試中...', 'var(--accent-green)');
     
-    const chunks = 3; // 減少分段數，縮短整體時間
-    const chunkSize = 1024 * 1024; // 每段維持 1MB
-    const data = new Uint8Array(chunkSize);
-    window.crypto.getRandomValues(data); 
-    const blob = new Blob([data], { type: 'text/plain' });
-    
-    let totalLoaded = 0;
-    const start = performance.now();
+    return new Promise((resolve) => {
+        const testBytes = 2 * 1024 * 1024; // 2MB，既能測速又不易卡死
+        const data = new Uint8Array(testBytes);
+        window.crypto.getRandomValues(data); 
+        
+        // 關鍵：使用 text/plain 確保這是一個「簡單請求」，避開 CORS 預檢 (OPTIONS)
+        const blob = new Blob([data], { type: 'text/plain' });
+        
+        const xhr = new XMLHttpRequest();
+        const start = performance.now();
+        let lastUpdate = start;
 
-    for (let i = 0; i < chunks; i++) {
-        // 使用 AbortController 加入 8 秒逾時保護，防止永久卡住
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && event.loaded > 0) {
+                const now = performance.now();
+                // 減少 UI 更新頻率（每 100ms 更新一次），增進流暢度
+                if (now - lastUpdate > 100) {
+                    const duration = (now - start) / 1000;
+                    const mbps = (event.loaded * 8 / 1000000) / duration;
+                    UI.mainVal.innerText = mbps.toFixed(1);
+                    UI.ulVal.innerText = mbps.toFixed(1);
+                    updateGauge(mbps, 60);
+                    lastUpdate = now;
+                }
+            }
+        };
 
-        try {
-            await fetch(`https://speed.cloudflare.com/__up?cb=${i}-${Date.now()}`, {
-                method: 'POST',
-                body: blob,
-                mode: 'no-cors',
-                cache: 'no-store',
-                signal: controller.signal // 加入控制訊號
-            });
+        xhr.onload = () => {
+            const finalDuration = (performance.now() - start) / 1000;
+            const finalMbps = (testBytes * 8 / 1000000) / finalDuration;
+            UI.mainVal.innerText = finalMbps.toFixed(1);
+            UI.ulVal.innerText = finalMbps.toFixed(1);
+            resolve(finalMbps);
+        };
 
-            clearTimeout(timeoutId); // 成功完成則清除逾時
-            totalLoaded += chunkSize;
+        xhr.onerror = () => {
+            console.error("上傳失敗");
+            UI.ulVal.innerText = '重試中';
+            resolve(0);
+        };
 
-            // 每傳完一段，立即更新指針與數值
-            let duration = (performance.now() - start) / 1000;
-            let mbps = (totalLoaded * 8 / 1000000) / duration;
-            
-            UI.mainVal.innerText = mbps.toFixed(1);
-            UI.ulVal.innerText = mbps.toFixed(1);
-            updateGauge(mbps, 60);
+        xhr.timeout = 15000; // 15 秒自動斷開，防止永久卡死
+        xhr.ontimeout = () => {
+            UI.ulVal.innerText = '超時';
+            resolve(0);
+        };
 
-        } catch (e) {
-            console.warn(`第 ${i+1} 段上傳超時或失敗，跳過...`);
-            // 如果某一段卡住，直接跳下一段，不讓畫面死掉
-            if (totalLoaded === 0) UI.ulVal.innerText = '重試中';
-        }
-    }
+        // 關鍵：不使用任何 setRequestHeader，完全遵照簡單請求規範
+        xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Date.now()}`);
+        xhr.send(blob);
+    });
 }
 
+// 修改按鈕點擊後的執行流程
+UI.btn.addEventListener('click', async () => {
+    UI.btn.disabled = true;
+    UI.btn.innerText = '測試執行中...';
+    
+    // 重置數值
+    UI.dlVal.innerText = '0.0';
+    UI.ulVal.innerText = '0.0';
+    UI.pingVal.innerText = '-- ms';
+    UI.jitterVal.innerText = '-- ms';
+    
+    try {
+        await testPing();
+        await delay(500);
+        await testDownload();
+        // 這裡會自動進入 testUpload 的冷卻時間
+        await testUpload();
+        
+        setUIState('測試完畢', '#fff');
+        updateGauge(0);
+    } catch (e) {
+        setUIState('連線異常', 'red');
+    }
+    
+    UI.btn.disabled = false;
+    UI.btn.innerText = '重新測試';
+});
     UI.btn.addEventListener('click', async () => {
         UI.btn.disabled = true;
         UI.btn.innerText = '測試執行中...';
