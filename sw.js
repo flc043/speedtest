@@ -1,4 +1,4 @@
-const CACHE_NAME = 'speedtest-v125'; // 更新版本號
+const CACHE_NAME = 'speedtest-v126'; // 對應版本 1.2.6
 
 const ASSETS = [
   './',
@@ -15,7 +15,6 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// 清除舊版本的快取，釋放空間
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then(keys => {
