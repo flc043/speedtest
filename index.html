@@ -259,32 +259,40 @@
         
         const testBytes = 2 * 1024 * 1024; // 2MB
         const data = new Uint8Array(testBytes);
-        // 隨機填充
-        for (let i = 0; i < data.length; i++) data[i] = Math.random() * 255;
+        for (let i = 0; i < data.length; i++) data[i] = Math.floor(Math.random() * 256);
+        
+        // 【關鍵修復】：將數據包裝成 Blob 並指定 type 為 text/plain
+        // 這樣瀏覽器就不會觸發 OPTIONS 預檢請求，直接繞過 CORS 攔截
+        const blob = new Blob([data], { type: 'text/plain' });
         
         let xhr = new XMLHttpRequest();
         let start = performance.now();
         let finalMbps = 0;
 
         xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
+            if (event.lengthComputable && event.loaded > 0) {
                 let duration = (performance.now() - start) / 1000;
                 if (duration > 0.1) {
                     let mbps = (event.loaded * 8 / 1000000) / duration;
                     finalMbps = mbps;
                     UI.mainVal.innerText = mbps.toFixed(1);
                     UI.ulVal.innerText = mbps.toFixed(1);
-                    updateGauge(mbps, 50);
+                    updateGauge(mbps, 60);
                 }
             }
         };
 
         xhr.onload = () => resolve(finalMbps);
-        xhr.onerror = (err) => {
-            console.error("XHR 詳細錯誤:", err); // 這行很重要
-            UI.ulVal.innerText = 'Error';
+        xhr.onerror = () => {
+            UI.ulVal.innerText = 'CORS Fail';
             resolve(0);
         };
+        
+        // 不要設置任何 setRequestHeader！
+        xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Date.now()}`);
+        xhr.send(blob);
+    });
+}
         
         // 只使用最基本的 POST，不要加任何 setRequestHeader
         xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Date.now()}`);
