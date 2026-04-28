@@ -1,5 +1,4 @@
-const CACHE_NAME = 'speedtest-v128'; // 更新版本號
-
+const CACHE_NAME = 'speedtest-v129';
 const ASSETS = [
   './',
   './index.html',
