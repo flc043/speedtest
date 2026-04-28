@@ -1,18 +1,34 @@
-const CACHE_NAME = 'speedtest-v5';
+const CACHE_NAME = 'speedtest-v125'; // 更新版本號
+
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './192.png',
+  './512.png'
+];
 
 self.addEventListener('install', (e) => {
-  self.skipWaiting(); // 強制更新
+  self.skipWaiting();
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+  );
 });
 
-self.addEventListener('fetch', (event) => {
-  // 如果是測速請求，直接跳過 Service Worker，走原生網路
-  if (event.request.url.includes('cloudflare.com')) {
-    return; 
-  }
-
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+// 清除舊版本的快取，釋放空間
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(keys.map(key => {
+        if (key !== CACHE_NAME) return caches.delete(key);
+      }));
     })
+  );
+});
+
+self.addEventListener('fetch', (e) => {
+  if (e.request.url.includes('cloudflare.com')) return; 
+  e.respondWith(
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
