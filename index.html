@@ -117,7 +117,7 @@
     <button class="start-btn" id="startBtn">開始測試</button>
 
     <footer class="footer">
-        <div class="version-text">版本資訊 v1.2.8 (PWA)</div>
+        <div class="version-text">版本資訊 v1.2.9 (PWA)</div>
         <div class="security-info">無追蹤程式碼 • 隱私防護模式 • 官方節點</div>
     </footer>
 </div>
@@ -197,18 +197,23 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 
 async function testUpload() {
     setUIState('準備上傳測試...', 'var(--accent-green)');
-    await delay(1500); // 關鍵：給網路 1.5 秒冷卻時間，防止連線塞車
+    await delay(1000); 
     
     setUIState('上傳測試中...', 'var(--accent-green)');
     
     return new Promise((resolve) => {
-        const testBytes = 2 * 1024 * 1024; // 2MB，既能測速又不易卡死
+        const testBytes = 2 * 1024 * 1024; // 2MB
         const data = new Uint8Array(testBytes);
-        window.crypto.getRandomValues(data); 
         
-        // 關鍵：使用 text/plain 確保這是一個「簡單請求」，避開 CORS 預檢 (OPTIONS)
+        // 修正：分段產生隨機數據，避開瀏覽器 64KB 的限制
+        const chunkSize = 65536;
+        for (let i = 0; i < testBytes; i += chunkSize) {
+            const currentChunkSize = Math.min(chunkSize, testBytes - i);
+            // 這裡我們只抓取當前段落的 view
+            window.crypto.getRandomValues(data.subarray(i, i + currentChunkSize));
+        }
+        
         const blob = new Blob([data], { type: 'text/plain' });
-        
         const xhr = new XMLHttpRequest();
         const start = performance.now();
         let lastUpdate = start;
@@ -216,7 +221,6 @@ async function testUpload() {
         xhr.upload.onprogress = (event) => {
             if (event.lengthComputable && event.loaded > 0) {
                 const now = performance.now();
-                // 減少 UI 更新頻率（每 100ms 更新一次），增進流暢度
                 if (now - lastUpdate > 100) {
                     const duration = (now - start) / 1000;
                     const mbps = (event.loaded * 8 / 1000000) / duration;
@@ -237,18 +241,11 @@ async function testUpload() {
         };
 
         xhr.onerror = () => {
-            console.error("上傳失敗");
-            UI.ulVal.innerText = '重試中';
+            UI.ulVal.innerText = '連線失敗';
             resolve(0);
         };
 
-        xhr.timeout = 15000; // 15 秒自動斷開，防止永久卡死
-        xhr.ontimeout = () => {
-            UI.ulVal.innerText = '超時';
-            resolve(0);
-        };
-
-        // 關鍵：不使用任何 setRequestHeader，完全遵照簡單請求規範
+        xhr.timeout = 20000; 
         xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Date.now()}`);
         xhr.send(blob);
     });
