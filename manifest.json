@@ -2,21 +2,24 @@
   "name": "SpeedTest Pro",
   "short_name": "SpeedTest",
   "description": "真實網路測速工具",
-  "id": "speedtest-pro-app",
+  "id": "/speedtest/",
   "start_url": "./index.html",
+  "scope": "/speedtest/",
   "display": "standalone",
   "background_color": "#0d131f",
   "theme_color": "#0d131f",
   "icons": [
-  {
-    "src": "192.png", 
-    "sizes": "192x192",
-    "type": "image/png"
-  },
-  {
-    "src": "512.png",
-    "sizes": "512x512",
-    "type": "image/png"
-  }
-]
+    {
+      "src": "192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
