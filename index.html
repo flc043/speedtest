@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- 安全政策：只允許連線到 Cloudflare 並禁止不安全的腳本執行 -->
+    <!-- 資安政策：嚴格限制連線來源與指令碼執行 -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://speed.cloudflare.com; img-src 'self' https://placehold.co data:; manifest-src 'self';">
     
     <title>SpeedTest Pro - 安全測速</title>
@@ -30,18 +30,18 @@
         
         .app-container { width: 100%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
         
-        /* Header & Security Badge */
+        /* 標題與資安徽章 */
         .header { display: flex; justify-content: space-between; align-items: flex-start; }
         .title h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
         .security-badge { font-size: 11px; background: rgba(52, 211, 153, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px; margin-top: 4px; border: 1px solid rgba(52, 211, 153, 0.2); }
 
-        /* Stats Grid */
+        /* 數據卡片 */
         .top-stats { display: flex; gap: 12px; }
         .stat-card { flex: 1; background-color: var(--card-bg); border-radius: 14px; padding: 14px; border: var(--border-style); }
         .stat-card h3 { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
         .stat-card p { font-size: 18px; font-weight: 700; }
 
-        /* Gauge Area */
+        /* 指針儀表區域 */
         .gauge-container { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 240px; }
         .svg-gauge { position: absolute; width: 230px; height: 230px; transform: rotate(135deg); }
         .gauge-bg { fill: none; stroke: #252d3d; stroke-width: 10; stroke-dasharray: 424 565; }
@@ -49,21 +49,21 @@
         .gauge-content { text-align: center; z-index: 10; }
         .gauge-value { font-size: 52px; font-weight: 800; line-height: 1; }
         .gauge-unit { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
-        .gauge-label { color: var(--primary-cyan); font-size: 13px; margin-top: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+        .gauge-label { color: var(--primary-cyan); font-size: 13px; margin-top: 10px; font-weight: 600; letter-spacing: 1px; }
 
         .bottom-stats { display: flex; gap: 12px; }
         .main-stat-card { flex: 1; background-color: var(--card-bg); border-radius: 14px; padding: 18px; text-align: center; border: var(--border-style); }
         .main-stat-card h3 { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
         .main-stat-card p { font-size: 22px; font-weight: 700; }
 
-        /* Buttons */
+        /* 按鈕 */
         .start-btn { background-color: var(--primary-cyan); color: #000; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(58, 191, 248, 0.2); }
         .start-btn:active { transform: scale(0.98); }
         .start-btn:disabled { background-color: #333; color: #666; box-shadow: none; }
 
-        /* Footer & Version Info */
+        /* 頁尾與版本資訊 */
         .footer { text-align: center; margin-top: 10px; }
-        .version-text { font-size: 10px; color: #4b5563; letter-spacing: 1px; }
+        .version-text { font-size: 10px; color: #4b5563; letter-spacing: 1px; font-weight: 600; }
         .security-info { font-size: 9px; color: #4b5563; margin-top: 4px; }
     </style>
 </head>
@@ -75,7 +75,7 @@
             <h1>SpeedTest Pro</h1>
             <div class="security-badge">
                 <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm0 10.91h-6V11c0-3.31 2.69-6 6-6s6 2.69 6 6v1.91h-6z"/></svg>
-                SSL 安全加密連線
+                SSL 加密安全連線
             </div>
         </div>
     </header>
@@ -86,7 +86,7 @@
             <p id="pingVal">-- ms</p>
         </div>
         <div class="stat-card">
-            <h3>抖動 (Jitter)</h3>
+            <h3>訊號抖動</h3>
             <p id="jitterVal">-- ms</p>
         </div>
     </div>
@@ -99,26 +99,26 @@
         <div class="gauge-content">
             <div class="gauge-value" id="mainValue">0</div>
             <div class="gauge-unit">Mbps</div>
-            <div class="gauge-label" id="mainLabel">Ready</div>
+            <div class="gauge-label" id="mainLabel">準備就緒</div>
         </div>
     </div>
 
     <div class="bottom-stats">
         <div class="main-stat-card">
-            <h3>下載</h3>
+            <h3>下載速度</h3>
             <p id="dlVal">0.0</p>
         </div>
         <div class="main-stat-card">
-            <h3>上傳</h3>
+            <h3>上傳速度</h3>
             <p id="ulVal">0.0</p>
         </div>
     </div>
 
-    <button class="start-btn" id="startBtn">開始網路測試</button>
+    <button class="start-btn" id="startBtn">開始測試</button>
 
     <footer class="footer">
-        <div class="version-text">VERSION 1.2.5 (PWA)</div>
-        <div class="security-info">無追蹤代碼 • 隱私保護模式 • 官方節點</div>
+        <div class="version-text">版本資訊 v1.2.6 (PWA)</div>
+        <div class="security-info">無追蹤程式碼 • 隱私防護模式 • 官方節點</div>
     </footer>
 </div>
 
@@ -149,9 +149,9 @@
         UI.gauge.style.stroke = color;
     }
 
-    // 1. Ping 測試 (安全性：使用 https)
+    // 1. 延遲量測
     async function testPing() {
-        setUIState('Testing Latency', 'var(--accent-pink)');
+        setUIState('正在量測延遲...', 'var(--accent-pink)');
         let pings = [];
         for (let i = 0; i < 6; i++) {
             let start = performance.now();
@@ -169,7 +169,7 @@
 
     // 2. 下載測試
     async function testDownload() {
-        setUIState('Downloading', 'var(--primary-cyan)');
+        setUIState('下載測試中...', 'var(--primary-cyan)');
         const testBytes = 15 * 1024 * 1024; // 15MB
         const start = performance.now();
         try {
@@ -191,13 +191,13 @@
         } catch (e) {}
     }
 
-    // 3. 上傳測試 (安全性：使用分段 no-cors 避免 CORS 報錯)
+    // 3. 上傳測試
     async function testUpload() {
-        setUIState('Uploading', 'var(--accent-green)');
+        setUIState('上傳測試中...', 'var(--accent-green)');
         const chunks = 4;
-        const chunkSize = 1024 * 1024; // 1MB per chunk
+        const chunkSize = 1024 * 1024; // 1MB 
         const data = new Uint8Array(chunkSize);
-        window.crypto.getRandomValues(data); // 安全的隨機數據
+        window.crypto.getRandomValues(data); 
         const blob = new Blob([data], { type: 'text/plain' });
         
         let totalLoaded = 0;
@@ -222,24 +222,23 @@
 
     UI.btn.addEventListener('click', async () => {
         UI.btn.disabled = true;
-        UI.btn.innerText = 'TESTING...';
+        UI.btn.innerText = '測試執行中...';
         await testPing();
         await testDownload();
         await testUpload();
-        setUIState('Test Finished', '#fff');
+        setUIState('測試完畢', '#fff');
         updateGauge(0);
         UI.btn.disabled = false;
-        UI.btn.innerText = 'RESTART TEST';
+        UI.btn.innerText = '重新測試';
     });
 
-    // PWA 自動更新邏輯
+    // PWA 更新邏輯
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').then(reg => {
             reg.onupdatefound = () => {
                 const installingWorker = reg.installing;
                 installingWorker.onstatechange = () => {
                     if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // 發現新版本，自動重新載入
                         window.location.reload();
                     }
                 };
