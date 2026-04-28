@@ -1,17 +1,26 @@
-const CACHE_NAME = 'speedtest-v1';
+const CACHE_NAME = 'speedtest-v2';
 const ASSETS = [
   './',
-  './index.html' // 假設你的 HTML 檔名是 index.html
+  './index.html',
+  './192.png',
+  './512.png',
+  './manifest.json'
 ];
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+// 安裝時快取資源
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(ASSETS);
+    })
   );
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((res) => res || fetch(e.request))
+// 攔截請求，確保離線可用
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
   );
 });
