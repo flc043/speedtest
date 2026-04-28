@@ -1,4 +1,4 @@
-const CACHE_NAME = 'speedtest-v126'; // 對應版本 1.2.6
+const CACHE_NAME = 'speedtest-v127'; // 更新至 v127
 
 const ASSETS = [
   './',
@@ -26,8 +26,10 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('cloudflare.com')) return; 
-  e.respondWith(
-    caches.match(e.request).then(res => res || fetch(e.request))
-  );
+    // 【資安防護】絕對不要攔截測速流量，否則會造成卡頓
+    if (e.request.url.includes('cloudflare.com')) return; 
+    
+    e.respondWith(
+        caches.match(e.request).then(res => res || fetch(e.request))
+    );
 });
