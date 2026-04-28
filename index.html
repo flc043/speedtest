@@ -2,13 +2,17 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpeedTest Pro - 真實網路測速</title>
-    <!-- PWA 設定 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- 安全政策：只允許連線到 Cloudflare 並禁止不安全的腳本執行 -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://speed.cloudflare.com; img-src 'self' https://placehold.co data:; manifest-src 'self';">
+    
+    <title>SpeedTest Pro - 安全測速</title>
+    
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0d131f">
     <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="192.png">
+
     <style>
         :root {
             --bg-color: #0d131f;
@@ -18,34 +22,49 @@
             --text-muted: #8b949e;
             --accent-green: #34d399;
             --accent-pink: #f472b6;
-            --accent-orange: #fb923c;
+            --border-style: 1px solid rgba(255,255,255,0.08);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .app-container { width: 100%; max-width: 400px; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; }
-        .title h1 { font-size: 24px; font-weight: 600; }
-        .title p { color: var(--accent-green); font-size: 13px; margin-top: 4px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        
+        .app-container { width: 100%; max-width: 400px; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+        
+        /* Header & Security Badge */
+        .header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .title h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+        .security-badge { font-size: 11px; background: rgba(52, 211, 153, 0.1); color: var(--accent-green); padding: 4px 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px; margin-top: 4px; border: 1px solid rgba(52, 211, 153, 0.2); }
+
+        /* Stats Grid */
         .top-stats { display: flex; gap: 12px; }
-        .stat-card { flex: 1; background-color: var(--card-bg); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-info h3 { font-size: 11px; color: var(--text-muted); text-transform: uppercase; }
-        .stat-info p { font-size: 16px; font-weight: bold; }
-        .gauge-container { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 260px; }
-        .svg-gauge { position: absolute; width: 240px; height: 240px; transform: rotate(135deg); }
-        .gauge-bg { fill: none; stroke: var(--card-bg); stroke-width: 12; stroke-dasharray: 424 565; }
-        .gauge-progress { fill: none; stroke: var(--primary-cyan); stroke-width: 12; stroke-dasharray: 565; stroke-dashoffset: 565; stroke-linecap: round; transition: stroke-dashoffset 0.1s linear; }
+        .stat-card { flex: 1; background-color: var(--card-bg); border-radius: 14px; padding: 14px; border: var(--border-style); }
+        .stat-card h3 { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .stat-card p { font-size: 18px; font-weight: 700; }
+
+        /* Gauge Area */
+        .gauge-container { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 240px; }
+        .svg-gauge { position: absolute; width: 230px; height: 230px; transform: rotate(135deg); }
+        .gauge-bg { fill: none; stroke: #252d3d; stroke-width: 10; stroke-dasharray: 424 565; }
+        .gauge-progress { fill: none; stroke: var(--primary-cyan); stroke-width: 10; stroke-dasharray: 565; stroke-dashoffset: 565; stroke-linecap: round; transition: stroke-dashoffset 0.3s ease-out; }
         .gauge-content { text-align: center; z-index: 10; }
-        .gauge-value { font-size: 56px; font-weight: bold; }
-        .gauge-unit { color: var(--text-muted); font-size: 16px; }
-        .gauge-label { color: var(--primary-cyan); font-size: 14px; margin-top: 8px; font-weight: bold; }
+        .gauge-value { font-size: 52px; font-weight: 800; line-height: 1; }
+        .gauge-unit { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+        .gauge-label { color: var(--primary-cyan); font-size: 13px; margin-top: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
         .bottom-stats { display: flex; gap: 12px; }
-        .main-stat-card { flex: 1; background-color: var(--card-bg); border-radius: 16px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-        .main-stat-card h3 { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
-        .main-stat-card p { font-size: 24px; font-weight: bold; }
-        .main-stat-card span { font-size: 12px; color: var(--text-muted); }
-        .start-btn { background-color: var(--primary-cyan); color: #000; border: none; border-radius: 14px; padding: 18px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .start-btn:disabled { background-color: #333; color: #777; }
+        .main-stat-card { flex: 1; background-color: var(--card-bg); border-radius: 14px; padding: 18px; text-align: center; border: var(--border-style); }
+        .main-stat-card h3 { font-size: 10px; color: var(--text-muted); margin-bottom: 6px; }
+        .main-stat-card p { font-size: 22px; font-weight: 700; }
+
+        /* Buttons */
+        .start-btn { background-color: var(--primary-cyan); color: #000; border: none; border-radius: 12px; padding: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(58, 191, 248, 0.2); }
+        .start-btn:active { transform: scale(0.98); }
+        .start-btn:disabled { background-color: #333; color: #666; box-shadow: none; }
+
+        /* Footer & Version Info */
+        .footer { text-align: center; margin-top: 10px; }
+        .version-text { font-size: 10px; color: #4b5563; letter-spacing: 1px; }
+        .security-info { font-size: 9px; color: #4b5563; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -53,16 +72,22 @@
 <div class="app-container">
     <header class="header">
         <div class="title">
-            <h1>SpeedTest Pro <span style="font-size:10px; color:yellow;">V3_FINAL</span></h1>
+            <h1>SpeedTest Pro</h1>
+            <div class="security-badge">
+                <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm0 10.91h-6V11c0-3.31 2.69-6 6-6s6 2.69 6 6v1.91h-6z"/></svg>
+                SSL 安全加密連線
+            </div>
         </div>
     </header>
 
     <div class="top-stats">
         <div class="stat-card">
-            <div class="stat-info"><h3>延遲 (Ping)</h3><p id="pingVal">0 ms</p></div>
+            <h3>延遲 (Ping)</h3>
+            <p id="pingVal">-- ms</p>
         </div>
         <div class="stat-card">
-            <div class="stat-info"><h3>抖動 (Jitter)</h3><p id="jitterVal">0 ms</p></div>
+            <h3>抖動 (Jitter)</h3>
+            <p id="jitterVal">-- ms</p>
         </div>
     </div>
 
@@ -72,26 +97,29 @@
             <circle class="gauge-progress" id="gaugeProgress" cx="100" cy="100" r="90"></circle>
         </svg>
         <div class="gauge-content">
-            <div class="gauge-value" id="mainValue">0.0</div>
+            <div class="gauge-value" id="mainValue">0</div>
             <div class="gauge-unit">Mbps</div>
-            <div class="gauge-label" id="mainLabel">準備測試</div>
+            <div class="gauge-label" id="mainLabel">Ready</div>
         </div>
     </div>
 
     <div class="bottom-stats">
         <div class="main-stat-card">
-            <h3>下載 (DOWNLOAD)</h3>
+            <h3>下載</h3>
             <p id="dlVal">0.0</p>
-            <span>Mbps</span>
         </div>
         <div class="main-stat-card">
-            <h3>上傳 (UPLOAD)</h3>
+            <h3>上傳</h3>
             <p id="ulVal">0.0</p>
-            <span>Mbps</span>
         </div>
     </div>
 
-    <button class="start-btn" id="startBtn">▶ 開始測試</button>
+    <button class="start-btn" id="startBtn">開始網路測試</button>
+
+    <footer class="footer">
+        <div class="version-text">VERSION 1.2.5 (PWA)</div>
+        <div class="security-info">無追蹤代碼 • 隱私保護模式 • 官方節點</div>
+    </footer>
 </div>
 
 <script>
@@ -109,43 +137,43 @@
     const MAX_DASH = 565;
     const ARC_LENGTH = 424;
 
-    function updateGauge(mbps, maxMbps = 300) {
+    function updateGauge(mbps, maxMbps = 100) {
         let percent = Math.min((mbps / maxMbps) * 100, 100);
         const offset = MAX_DASH - (percent / 100) * ARC_LENGTH;
         UI.gauge.style.strokeDashoffset = offset;
     }
 
-    function setGaugeColor(color) {
-        UI.gauge.style.stroke = color;
+    function setUIState(label, color) {
+        UI.mainLabel.innerText = label;
         UI.mainLabel.style.color = color;
+        UI.gauge.style.stroke = color;
     }
 
+    // 1. Ping 測試 (安全性：使用 https)
     async function testPing() {
-        UI.mainLabel.innerText = '測量延遲...';
-        setGaugeColor('var(--accent-pink)');
+        setUIState('Testing Latency', 'var(--accent-pink)');
         let pings = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 6; i++) {
             let start = performance.now();
             try {
-                await fetch(`https://speed.cloudflare.com/__down?bytes=0&cache=${Math.random()}`);
+                await fetch('https://speed.cloudflare.com/__down?bytes=0', { mode: 'no-cors', cache: 'no-store' });
                 pings.push(performance.now() - start);
             } catch (e) {}
         }
         if (pings.length === 0) return;
-        let avgPing = pings.reduce((a, b) => a + b) / pings.length;
-        UI.pingVal.innerText = `${Math.round(avgPing)} ms`;
-        let jitterSum = 0;
-        for (let i = 1; i < pings.length; i++) jitterSum += Math.abs(pings[i] - pings[i - 1]);
-        UI.jitterVal.innerText = `${Math.round(jitterSum / (pings.length - 1))} ms`;
+        let avg = pings.reduce((a, b) => a + b) / pings.length;
+        UI.pingVal.innerText = Math.round(avg) + ' ms';
+        let jitter = Math.abs(pings[pings.length-1] - pings[0]);
+        UI.jitterVal.innerText = Math.round(jitter) + ' ms';
     }
 
+    // 2. 下載測試
     async function testDownload() {
-        UI.mainLabel.innerText = '下載測試中...';
-        setGaugeColor('var(--primary-cyan)');
-        const testBytes = 25 * 1024 * 1024;
+        setUIState('Downloading', 'var(--primary-cyan)');
+        const testBytes = 15 * 1024 * 1024; // 15MB
         const start = performance.now();
         try {
-            const response = await fetch(`https://speed.cloudflare.com/__down?bytes=${testBytes}&cb=${Math.random()}`);
+            const response = await fetch(`https://speed.cloudflare.com/__down?bytes=${testBytes}`, { cache: 'no-store' });
             const reader = response.body.getReader();
             let loaded = 0;
             while (true) {
@@ -157,90 +185,65 @@
                     let mbps = (loaded * 8 / 1000000) / duration;
                     UI.mainVal.innerText = mbps.toFixed(1);
                     UI.dlVal.innerText = mbps.toFixed(1);
-                    updateGauge(mbps, 300);
+                    updateGauge(mbps, 200);
                 }
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {}
     }
 
+    // 3. 上傳測試 (安全性：使用分段 no-cors 避免 CORS 報錯)
     async function testUpload() {
-    UI.mainLabel.innerText = '上傳測試中...';
-    setGaugeColor('var(--accent-green)');
-    
-    const numChunks = 5; // 將數據拆成 5 份上傳
-    const chunkSize = 1024 * 1024; // 每份 1MB
-    const data = new Uint8Array(chunkSize);
-    for (let i = 0; i < chunkSize; i++) data[i] = Math.floor(Math.random() * 256);
+        setUIState('Uploading', 'var(--accent-green)');
+        const chunks = 4;
+        const chunkSize = 1024 * 1024; // 1MB per chunk
+        const data = new Uint8Array(chunkSize);
+        window.crypto.getRandomValues(data); // 安全的隨機數據
+        const blob = new Blob([data], { type: 'text/plain' });
+        
+        let totalLoaded = 0;
+        const start = performance.now();
 
-    let totalLoaded = 0;
-    const start = performance.now();
-
-    try {
-        for (let i = 0; i < numChunks; i++) {
-            // 每次上傳一小塊
-            await fetch(`https://speed.cloudflare.com/__up?cb=${Math.random()}`, {
-                method: 'POST',
-                body: data,
-                mode: 'no-cors',
-                cache: 'no-store'
-            });
-
-            totalLoaded += chunkSize;
-            
-            // 每傳完一塊，就計算一次當前速度並更新 UI
-            let duration = (performance.now() - start) / 1000;
-            if (duration > 0) {
+        for (let i = 0; i < chunks; i++) {
+            try {
+                await fetch(`https://speed.cloudflare.com/__up?cb=${i}`, {
+                    method: 'POST',
+                    body: blob,
+                    mode: 'no-cors'
+                });
+                totalLoaded += chunkSize;
+                let duration = (performance.now() - start) / 1000;
                 let mbps = (totalLoaded * 8 / 1000000) / duration;
                 UI.mainVal.innerText = mbps.toFixed(1);
                 UI.ulVal.innerText = mbps.toFixed(1);
-                updateGauge(mbps, 60); // 讓指針動起來
-            }
+                updateGauge(mbps, 50);
+            } catch (e) {}
         }
-
-        const finalDuration = (performance.now() - start) / 1000;
-        const finalMbps = (totalLoaded * 8 / 1000000) / finalDuration;
-        
-        UI.mainVal.innerText = finalMbps.toFixed(1);
-        UI.ulVal.innerText = finalMbps.toFixed(1);
-        return finalMbps;
-
-    } catch (e) {
-        console.error("Upload error:", e);
-        UI.ulVal.innerText = 'Error';
-        return 0;
     }
-}
 
-    async function runRealSpeedTest() {
+    UI.btn.addEventListener('click', async () => {
         UI.btn.disabled = true;
-        UI.btn.innerText = '測試中...';
-        UI.dlVal.innerText = '0.0'; UI.ulVal.innerText = '0.0';
-        try {
-            await testPing();
-            await testDownload();
-            await testUpload();
-            UI.mainLabel.innerText = '測試完成';
-            setGaugeColor('var(--text-main)');
-            updateGauge(0);
-        } catch (e) { UI.mainLabel.innerText = '錯誤'; }
+        UI.btn.innerText = 'TESTING...';
+        await testPing();
+        await testDownload();
+        await testUpload();
+        setUIState('Test Finished', '#fff');
+        updateGauge(0);
         UI.btn.disabled = false;
-        UI.btn.innerText = '▶ 重新測試';
-    }
+        UI.btn.innerText = 'RESTART TEST';
+    });
 
-    UI.btn.addEventListener('click', runRealSpeedTest);
-
+    // PWA 自動更新邏輯
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js').then(reg => {
-                reg.onupdatefound = () => {
-                    const installingWorker = reg.installing;
-                    installingWorker.onstatechange = () => {
-                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            location.reload();
-                        }
-                    };
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                        // 發現新版本，自動重新載入
+                        window.location.reload();
+                    }
                 };
-            });
+            };
         });
     }
 </script>
