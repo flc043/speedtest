@@ -117,7 +117,7 @@
     <button class="start-btn" id="startBtn">開始測試</button>
 
     <footer class="footer">
-        <div class="version-text">版本資訊 v1.3.0 (PWA)</div>
+        <div class="version-text">版本資訊 v1.3.1 (PWA)</div>
         <div class="security-info">無追蹤程式碼 • 隱私防護模式 • 官方節點</div>
     </footer>
 </div>
@@ -198,30 +198,33 @@ const delay = ms => new Promise(res => setTimeout(res, ms));
 async function testUpload() {
     setUIState('上傳測試中...', 'var(--accent-green)');
     
-    const totalSize = 4 * 1024 * 1024; // 總量 4MB
-    const chunkSize = 512 * 1024;     // 每段 512KB (共 8 段)
-    const numChunks = totalSize / chunkSize;
+    const numChunks = 8;              // 總共傳 8 次
+    const chunkSize = 512 * 1024;     // 每段 512KB (總量 4MB)
+    const entropyLimit = 65536;       // 瀏覽器單次隨機數限制 (64KB)
     
-    // 產生隨機數據（安全分段產生）
+    // 安全地產生 512KB 隨機數據 (分段填充)
     const chunkData = new Uint8Array(chunkSize);
-    window.crypto.getRandomValues(chunkData);
+    for (let i = 0; i < chunkData.length; i += entropyLimit) {
+        const nextChunk = Math.min(entropyLimit, chunkData.length - i);
+        window.crypto.getRandomValues(chunkData.subarray(i, i + nextChunk));
+    }
 
     let uploadedBytes = 0;
     const start = performance.now();
 
     try {
         for (let i = 0; i < numChunks; i++) {
-            // 使用 fetch + no-cors：這是唯一能完全避開預檢請求的方法
-            await fetch('https://speed.cloudflare.com/__up', {
+            // 使用 fetch + no-cors 完全避開 CORS 預檢
+            await fetch(`https://speed.cloudflare.com/__up?cb=${i}-${Date.now()}`, {
                 method: 'POST',
                 body: chunkData,
-                mode: 'no-cors', // 強制不檢查 CORS
+                mode: 'no-cors',
                 cache: 'no-store'
             });
 
             uploadedBytes += chunkSize;
             
-            // 每傳完一段就計算一次即時速度，讓儀表板指針跳動
+            // 更新即時數值與指針
             const now = performance.now();
             const duration = (now - start) / 1000;
             if (duration > 0) {
@@ -233,7 +236,10 @@ async function testUpload() {
         }
 
         const finalDuration = (performance.now() - start) / 1000;
-        return (uploadedBytes * 8 / 1000000) / finalDuration;
+        const finalMbps = (uploadedBytes * 8 / 1000000) / finalDuration;
+        UI.mainVal.innerText = finalMbps.toFixed(1);
+        UI.ulVal.innerText = finalMbps.toFixed(1);
+        return finalMbps;
 
     } catch (e) {
         console.error("上傳失敗:", e);
