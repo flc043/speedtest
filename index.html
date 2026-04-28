@@ -168,30 +168,43 @@
     UI.mainLabel.innerText = '上傳測試中...';
     setGaugeColor('var(--accent-green)');
     
-    // 產生 4MB 的隨機數據
-    const size = 4 * 1024 * 1024; 
-    const data = new Uint8Array(size);
-    for (let i = 0; i < size; i++) data[i] = Math.floor(Math.random() * 256);
+    const numChunks = 5; // 將數據拆成 5 份上傳
+    const chunkSize = 1024 * 1024; // 每份 1MB
+    const data = new Uint8Array(chunkSize);
+    for (let i = 0; i < chunkSize; i++) data[i] = Math.floor(Math.random() * 256);
 
+    let totalLoaded = 0;
     const start = performance.now();
-    
-    try {
-        // 使用 fetch 的 no-cors 模式，這會強制跳過預檢請求，直接繞過 CORS 限制
-        await fetch('https://speed.cloudflare.com/__up', {
-            method: 'POST',
-            body: data,
-            mode: 'no-cors', // 關鍵：不檢查 CORS，直接發送
-            cache: 'no-store'
-        });
 
-        // 計算時間差
-        const duration = (performance.now() - start) / 1000;
-        const mbps = (size * 8 / 1000000) / duration;
+    try {
+        for (let i = 0; i < numChunks; i++) {
+            // 每次上傳一小塊
+            await fetch(`https://speed.cloudflare.com/__up?cb=${Math.random()}`, {
+                method: 'POST',
+                body: data,
+                mode: 'no-cors',
+                cache: 'no-store'
+            });
+
+            totalLoaded += chunkSize;
+            
+            // 每傳完一塊，就計算一次當前速度並更新 UI
+            let duration = (performance.now() - start) / 1000;
+            if (duration > 0) {
+                let mbps = (totalLoaded * 8 / 1000000) / duration;
+                UI.mainVal.innerText = mbps.toFixed(1);
+                UI.ulVal.innerText = mbps.toFixed(1);
+                updateGauge(mbps, 60); // 讓指針動起來
+            }
+        }
+
+        const finalDuration = (performance.now() - start) / 1000;
+        const finalMbps = (totalLoaded * 8 / 1000000) / finalDuration;
         
-        UI.mainVal.innerText = mbps.toFixed(1);
-        UI.ulVal.innerText = mbps.toFixed(1);
-        updateGauge(mbps, 60);
-        return mbps;
+        UI.mainVal.innerText = finalMbps.toFixed(1);
+        UI.ulVal.innerText = finalMbps.toFixed(1);
+        return finalMbps;
+
     } catch (e) {
         console.error("Upload error:", e);
         UI.ulVal.innerText = 'Error';
