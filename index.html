@@ -253,40 +253,44 @@
 
     // 3. 真實上傳測試 (10MB)
     function testUpload() {
-        return new Promise((resolve) => {
-            UI.mainLabel.innerText = '上傳測試中...';
-            setGaugeColor('var(--accent-green)');
-            
-            const testBytes = 10 * 1024 * 1024; // 產生 10MB 的假資料
-            const data = new Uint8Array(testBytes);
-            
-            let xhr = new XMLHttpRequest();
-            let start = performance.now();
-            let finalMbps = 0;
+    return new Promise((resolve) => {
+        UI.mainLabel.innerText = '上傳測試中...';
+        setGaugeColor('var(--accent-green)');
+        
+        // 稍微減小測試量到 5MB，增加在行動網路的成功率
+        const testBytes = 5 * 1024 * 1024; 
+        const data = new Uint8Array(testBytes);
+        
+        let xhr = new XMLHttpRequest();
+        let start = performance.now();
+        let finalMbps = 0;
 
-            xhr.upload.onprogress = (event) => {
-                if (event.lengthComputable) {
-                    let duration = (performance.now() - start) / 1000;
-                    if (duration > 0.1) {
-                        let mbps = (event.loaded * 8 / 1000000) / duration;
-                        finalMbps = mbps;
-                        let displayVal = mbps.toFixed(1);
-                        UI.mainVal.innerText = displayVal;
-                        UI.ulVal.innerText = displayVal;
-                        updateGauge(mbps, 100); // 假設上傳儀表板上限 100Mbps
-                    }
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable && event.loaded > 0) {
+                let duration = (performance.now() - start) / 1000;
+                if (duration > 0.1) {
+                    let mbps = (event.loaded * 8 / 1000000) / duration;
+                    finalMbps = mbps;
+                    UI.mainVal.innerText = mbps.toFixed(1);
+                    UI.ulVal.innerText = mbps.toFixed(1);
+                    updateGauge(mbps, 100);
                 }
-            };
+            }
+        };
 
-            xhr.onload = () => resolve(finalMbps);
-            xhr.onerror = () => resolve(0);
-            
-            // Cloudflare 提供的公開上傳接收端點
-            xhr.open('POST', `https://speed.cloudflare.com/__up?cache=${Math.random()}`);
-            xhr.send(data);
-        });
-    }
-
+        xhr.onload = () => resolve(finalMbps);
+        xhr.onerror = () => {
+            console.error("Upload failed");
+            resolve(0);
+        };
+        
+        // 使用 Cloudflare 官方上傳端點
+        xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Math.random()}`);
+        // 增加這行，避免某些瀏覽器將其判定為複雜請求
+        xhr.setRequestHeader('Content-Type', 'text/plain');
+        xhr.send(data);
+    });
+}
     // 執行完整流程
     async function runRealSpeedTest() {
         UI.btn.disabled = true;
