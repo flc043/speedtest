@@ -193,32 +193,49 @@
 
     // 3. 上傳測試
     async function testUpload() {
-        setUIState('上傳測試中...', 'var(--accent-green)');
-        const chunks = 4;
-        const chunkSize = 1024 * 1024; // 1MB 
-        const data = new Uint8Array(chunkSize);
-        window.crypto.getRandomValues(data); 
-        const blob = new Blob([data], { type: 'text/plain' });
-        
-        let totalLoaded = 0;
-        const start = performance.now();
+    setUIState('上傳測試中...', 'var(--accent-green)');
+    
+    const chunks = 3; // 減少分段數，縮短整體時間
+    const chunkSize = 1024 * 1024; // 每段維持 1MB
+    const data = new Uint8Array(chunkSize);
+    window.crypto.getRandomValues(data); 
+    const blob = new Blob([data], { type: 'text/plain' });
+    
+    let totalLoaded = 0;
+    const start = performance.now();
 
-        for (let i = 0; i < chunks; i++) {
-            try {
-                await fetch(`https://speed.cloudflare.com/__up?cb=${i}`, {
-                    method: 'POST',
-                    body: blob,
-                    mode: 'no-cors'
-                });
-                totalLoaded += chunkSize;
-                let duration = (performance.now() - start) / 1000;
-                let mbps = (totalLoaded * 8 / 1000000) / duration;
-                UI.mainVal.innerText = mbps.toFixed(1);
-                UI.ulVal.innerText = mbps.toFixed(1);
-                updateGauge(mbps, 50);
-            } catch (e) {}
+    for (let i = 0; i < chunks; i++) {
+        // 使用 AbortController 加入 8 秒逾時保護，防止永久卡住
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+        try {
+            await fetch(`https://speed.cloudflare.com/__up?cb=${i}-${Date.now()}`, {
+                method: 'POST',
+                body: blob,
+                mode: 'no-cors',
+                cache: 'no-store',
+                signal: controller.signal // 加入控制訊號
+            });
+
+            clearTimeout(timeoutId); // 成功完成則清除逾時
+            totalLoaded += chunkSize;
+
+            // 每傳完一段，立即更新指針與數值
+            let duration = (performance.now() - start) / 1000;
+            let mbps = (totalLoaded * 8 / 1000000) / duration;
+            
+            UI.mainVal.innerText = mbps.toFixed(1);
+            UI.ulVal.innerText = mbps.toFixed(1);
+            updateGauge(mbps, 60);
+
+        } catch (e) {
+            console.warn(`第 ${i+1} 段上傳超時或失敗，跳過...`);
+            // 如果某一段卡住，直接跳下一段，不讓畫面死掉
+            if (totalLoaded === 0) UI.ulVal.innerText = '重試中';
         }
     }
+}
 
     UI.btn.addEventListener('click', async () => {
         UI.btn.disabled = true;
