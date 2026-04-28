@@ -252,44 +252,43 @@
     }
 
     // 3. 真實上傳測試 (10MB)
-    function testUpload() {
-    return new Promise((resolve) => {
-        UI.mainLabel.innerText = '上傳測試中...';
-        setGaugeColor('var(--accent-green)');
-        
-        // 稍微減小測試量到 5MB，增加在行動網路的成功率
-        const testBytes = 5 * 1024 * 1024; 
-        const data = new Uint8Array(testBytes);
-        
-        let xhr = new XMLHttpRequest();
-        let start = performance.now();
-        let finalMbps = 0;
+    async function testUpload() {
+    UI.mainLabel.innerText = '上傳測試中...';
+    setGaugeColor('var(--accent-green)');
+    
+    // 產生 5MB 隨機資料
+    const testBytes = 5 * 1024 * 1024;
+    const data = new Uint8Array(testBytes);
+    crypto.getRandomValues(data); // 填充隨機內容，防止被壓縮
 
-        xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable && event.loaded > 0) {
-                let duration = (performance.now() - start) / 1000;
-                if (duration > 0.1) {
-                    let mbps = (event.loaded * 8 / 1000000) / duration;
-                    finalMbps = mbps;
-                    UI.mainVal.innerText = mbps.toFixed(1);
-                    UI.ulVal.innerText = mbps.toFixed(1);
-                    updateGauge(mbps, 100);
-                }
-            }
-        };
+    const url = `https://speed.cloudflare.com/__up?cb=${Date.now()}`;
+    const start = performance.now();
 
-        xhr.onload = () => resolve(finalMbps);
-        xhr.onerror = () => {
-            console.error("Upload failed");
-            resolve(0);
-        };
-        
-        // 使用 Cloudflare 官方上傳端點
-        xhr.open('POST', `https://speed.cloudflare.com/__up?cb=${Math.random()}`);
-        // 增加這行，避免某些瀏覽器將其判定為複雜請求
-        xhr.setRequestHeader('Content-Type', 'text/plain');
-        xhr.send(data);
-    });
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: data,
+            // 關鍵設定：不快取、不發送憑證、不攔截
+            cache: 'no-store',
+            mode: 'cors',
+            credentials: 'omit'
+        });
+
+        if (response.ok) {
+            const duration = (performance.now() - start) / 1000;
+            const mbps = (testBytes * 8 / 1000000) / duration;
+            UI.mainVal.innerText = mbps.toFixed(1);
+            UI.ulVal.innerText = mbps.toFixed(1);
+            updateGauge(mbps, 100);
+            return mbps;
+        } else {
+            throw new Error('Upload failed');
+        }
+    } catch (err) {
+        console.error("上傳錯誤:", err);
+        UI.ulVal.innerText = 'Error';
+        return 0;
+    }
 }
     // 執行完整流程
     async function runRealSpeedTest() {
