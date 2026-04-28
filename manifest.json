@@ -1,20 +1,31 @@
 {
-  "name": "SpeedTest Pro",
   "short_name": "SpeedTest",
-  "start_url": "./index.html",
-  "display": "standalone",
-  "background_color": "#0d131f",
-  "theme_color": "#0d131f",
+  "name": "SpeedTest Pro 真實測速",
+  "id": "/speedtest/",
   "icons": [
     {
       "src": "192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
-  ]
+  ],
+  "start_url": "index.html",
+  "background_color": "#0d131f",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#0d131f",
+  "description": "Cloudflare 真實節點網路測速工具"
 }
